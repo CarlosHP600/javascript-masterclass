@@ -1,49 +1,7 @@
-class DatabaseError {
-  constructor(statement, message) {
-    this.statement = statement;
-    this.message = `${message}: ${statement}`;
-  }
-}
+import Parser from "./parser.mjs";
+import DatabaseError from "./database-error.mjs";
 
-class Parser {
-  constructor() {
-    this.commands = new Map();
-    this.initCommands();
-  }
-
-  initCommands() {
-    this.commands.set(
-      "createTable",
-      /^create\s+table\s+([\w\S]+)\s*\(([\W\S]+)\)$/
-    );
-    this.commands.set(
-      "insert",
-      /^insert\s+into\s+([\w\S]+)\s*\(([\W\S]+)\)\s+values\s+\(([\W\S]+)\)$/
-    );
-    this.commands.set(
-      "delete",
-      /^\s*delete\s+.*(?<=from)(\s+\w+\b)(?: where (.+)){0,1}$/
-    );
-    this.commands.set(
-      "select",
-      /^\s*select\s+(?:distinct\s+)?(?:top\s+\d*\s+)?(.*?)from.*(?<=from)(\s+\w+\b)(?: where (.+)){0,1}$/
-    );
-  }
-
-  parse(statement) {
-    for (let [command, regexp] of this.commands) {
-      const parsedStatement = statement.match(regexp);
-      if (parsedStatement) {
-        return {
-          command,
-          parsedStatement,
-        };
-      }
-    }
-  }
-}
-
-class DataBase {
+export default class DataBase {
   constructor() {
     this.tables = {};
     this.parser = new Parser();
@@ -153,28 +111,4 @@ class DataBase {
     const message = `Syntax error: "${statement}"`;
     throw new DatabaseError(statement, message);
   }
-}
-
-const database = new DataBase();
-try {
-  const createCommand =
-    "create table author (id number, name string, age number, city string,\
-       state string, country string)";
-  database.execute(createCommand);
-
-  const insertCommands = [
-    "insert into author (id, name, age) values (1, Douglas Crockford, 62)",
-    "insert into author (id, name, age) values (2, Linus Torvalds, 47)",
-    "insert into author (id, name, age) values (3, Martin Fowler, 54)",
-  ];
-  for (insertCommand of insertCommands) {
-    database.execute(insertCommand);
-  }
-  const deleteComand = "delete from author where id = 2";
-  database.execute(deleteComand);
-
-  const selectCommand = "select name, age from author";
-  console.log(JSON.stringify(database.execute(selectCommand), undefined, " "));
-} catch (e) {
-  console.log(e.message);
 }
