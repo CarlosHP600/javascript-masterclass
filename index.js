@@ -8,7 +8,7 @@ const database = Object.assign(
 
       let [, tableName, tableColumns] = result;
 
-      tableColumns = tableColumns.split(/\s*,\s*/);
+      tableColumns = tableColumns.split(",").map((column) => column.trim());
 
       if (!tableName || !tableColumns) return;
 
@@ -37,6 +37,10 @@ const database = Object.assign(
 
       if (cmd.startsWith("insert into ")) return this.insert(sqlCommand);
 
+      if (cmd.startsWith("delete ")) return this.delete(sqlCommand);
+
+      if (cmd.startsWith("select ")) return this.select(sqlCommand);
+
       throw new DatabaseError(sqlCommand, "Syntax error");
     },
     insert: function (sqlCommand) {
@@ -45,8 +49,8 @@ const database = Object.assign(
 
       let [, tableName, tableColumns, tableValues] = result;
 
-      tableColumns = tableColumns.split(/\s*,\s*/);
-      tableValues = tableValues.split(/\s*,\s*/);
+      tableColumns = tableColumns.split(",").map((column) => column.trim());
+      tableValues = tableValues.split(",").map((values) => values.trim());
 
       if (!tableName || !tableColumns || !tableValues) return;
 
@@ -57,6 +61,37 @@ const database = Object.assign(
         row[columnName] = columnValue;
       }
       this.tables[tableName].data.push(row);
+    },
+    select: function (sqlCommand) {
+      const regExp = /^\s*select\s+(?:distinct\s+)?(?:top\s+\d*\s+)?(.*?)from.*(?<=from)(\s+\w+\b)(?: where (.+)){0,1}$/;
+      const result = sqlCommand.match(regExp);
+
+      let [, selectColumns, tableName, whereClause] = result;
+
+      if (!selectColumns || !tableName) return;
+
+      tableName = tableName.trim();
+      selectColumns = selectColumns.split(",").map((column) => column.trim());
+
+      let rows = this.tables[tableName].data;
+
+      if (whereClause) {
+        let [columnWhere, valueWhere] = whereClause
+          .split("=")
+          .map((column) => column.trim());
+        rows = rows.filter(function (row) {
+          return row[columnWhere] === valueWhere;
+        });
+      }
+
+      rows = rows.map(function (row) {
+        let selectRow = {};
+        selectColumns.forEach(function (column) {
+          selectRow[column] = row[column];
+        });
+        return selectRow;
+      });
+      return rows;
     },
   }
 );
@@ -71,18 +106,26 @@ try {
     "create table author (id number, name string, age number,\
     city string, state string, country string)";
 
+  database.execute(createCommand);
+
   const insertCommands = [
     "insert into author (id, name, age) values (1, Douglas Crockford, 62)",
     "insert into author (id, name, age) values (2, Linus Torvalds, 47)",
     "insert into author (id, name, age) values (3, Martin Fowler, 54)",
   ];
-  database.execute(createCommand);
   for (insertCommand of insertCommands) {
     database.execute(insertCommand);
   }
-  //const selectCommand = "select id, name from author";
-  //database.execute(selectCommand);
-  console.log(JSON.stringify(database, null, "    "));
+
+  const selectCommands = [
+    "select name, age from author",
+    "select name, age from author where id = 1",
+  ];
+  for (selectCommand of selectCommands) {
+    console.log(
+      JSON.stringify(database.execute(selectCommand), undefined, " ")
+    );
+  }
 } catch (e) {
   console.log(e.message);
 }
