@@ -93,6 +93,33 @@ const database = Object.assign(
       });
       return rows;
     },
+    delete: function (sqlCommand) {
+      const regExp = /^\s*delete\s+.*(?<=from)(\s+\w+\b)(?: where (.+)){0,1}$/;
+      const result = sqlCommand.match(regExp);
+
+      let [, tableName, whereClause] = result;
+
+      tableName = tableName.trim();
+
+      let rows = this.tables[tableName].data;
+
+      if (whereClause) {
+        let [columnWhere, valueWhere] = whereClause
+          .split("=")
+          .map((column) => column.trim());
+        let index = rows.findIndex(function (row) {
+          return row[columnWhere] === valueWhere;
+        });
+        if (index != -1) {
+          this.tables[tableName].data = [
+            ...rows.slice(0, index),
+            ...rows.slice(index + 1),
+          ];
+        }
+      } else {
+        this.tables[tableName].data = [];
+      }
+    },
   }
 );
 
@@ -117,15 +144,13 @@ try {
     database.execute(insertCommand);
   }
 
-  const selectCommands = [
-    "select name, age from author",
-    "select name, age from author where id = 1",
-  ];
-  for (selectCommand of selectCommands) {
-    console.log(
-      JSON.stringify(database.execute(selectCommand), undefined, " ")
-    );
-  }
+  const deleteComand = "delete from author where id = 2";
+  database.execute(deleteComand);
+
+  const selectCommand = "select name, age from author";
+  console.log(
+    JSON.stringify(database.execute(selectCommand), undefined, "    ")
+  );
 } catch (e) {
   console.log(e.message);
 }
