@@ -29,18 +29,32 @@ const database = Object.assign(
       }
     },
     execute: function (sqlCommand) {
-      if (!sqlCommand) return;
+      if (!sqlCommand)
+        throw new DatabaseError(sqlCommand, "SqlCommand not found");
 
       const cmd = sqlCommand.toLowerCase();
-      if (cmd.startsWith("create table ")) this.createTable(sqlCommand);
+      if (!cmd.startsWith("create table "))
+        throw new DatabaseError(sqlCommand, "Syntax error");
+
+      return this.createTable(sqlCommand);
     },
   }
 );
 
-const sqlCommand =
-  "create table author (id number, name string, age number,\
-  city string, state string, country string)";
+const DatabaseError = function (statement, message) {
+  this.message = `${message}: ${statement}`;
+  this.statement = statement;
+};
 
-database.execute(sqlCommand);
+try {
+  const sqlCommand =
+    "create table author (id number, name string, age number,\
+    city string, state string, country string)";
 
-console.log(JSON.stringify(database, null, "    "));
+  database.execute(sqlCommand);
+  database.execute("select id, name from author");
+
+  console.log(JSON.stringify(database, null, "    "));
+} catch (e) {
+  console.log(e.message);
+}
