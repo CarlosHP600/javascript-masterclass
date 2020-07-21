@@ -12,20 +12,20 @@ const insertCommands = [
 
 const selectCommand = "select name, age from author";
 
-const database = new DataBase();
-
-database.execute(createCommand)
-  .then(() => {
-    return Promise.all([
+(async function(){
+  try {    
+    const database = new DataBase();
+    await database.execute(createCommand);
+    await Promise.all([
       database.execute(insertCommands[0]),
       database.execute(insertCommands[1]),
       database.execute(insertCommands[2]),
-    ]).then(() => {
-      return database.execute(selectCommand).then((result) => {
-        console.log(JSON.stringify(result, undefined, " "));
-      });
-    });
-  })
-  .catch((e) => {
-    console.log(e.message);
-  });
+    ]);
+    const result = await database.execute(selectCommand);
+    console.log(JSON.stringify(result, undefined, " "));
+  } catch (error) {
+    console.log(error.message);
+  }
+})();
+
+
